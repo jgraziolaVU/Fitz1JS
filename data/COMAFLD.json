@@ -1,0 +1,122 @@
+[
+  {
+    "name": "Coma1",
+    "ra": 12.994930,
+    "dec": 27.80106,
+    "mag": 12.30,
+    "bv": 0.00,
+    "ub": 0.00,
+    "redshift": 0.02,
+    "objType": 1,
+    "code": 10,
+    "specType": ""
+  },
+  {
+    "name": "Coma2",
+    "ra": 12.943770,
+    "dec": 27.75894,
+    "mag": 12.55,
+    "bv": 0.00,
+    "ub": 0.00,
+    "redshift": 0.02,
+    "objType": 1,
+    "code": 20,
+    "specType": ""
+  },
+  {
+    "name": "Coma3",
+    "ra": 13.023000,
+    "dec": 27.49093,
+    "mag": 12.45,
+    "bv": 0.00,
+    "ub": 0.00,
+    "redshift": 0.02,
+    "objType": 1,
+    "code": 30,
+    "specType": ""
+  },
+  {
+    "name": "1",
+    "ra": 13.044042,
+    "dec": 28.61671,
+    "mag": 7.576,
+    "bv": 0.60,
+    "ub": 0.10,
+    "redshift": 0.00,
+    "objType": 0,
+    "code": 60405000,
+    "specType": "K4 V"
+  },
+  {
+    "name": "2",
+    "ra": 12.870646,
+    "dec": 27.21298,
+    "mag": 14.595,
+    "bv": 1.20,
+    "ub": 0.80,
+    "redshift": 0.00,
+    "objType": 0,
+    "code": 70305000,
+    "specType": "M3 V"
+  },
+  {
+    "name": "3",
+    "ra": 12.873051,
+    "dec": 29.14371,
+    "mag": 12.096,
+    "bv": 1.00,
+    "ub": 0.60,
+    "redshift": 0.00,
+    "objType": 0,
+    "code": 60605000,
+    "specType": "K6 V"
+  },
+  {
+    "name": "4",
+    "ra": 12.895589,
+    "dec": 26.65345,
+    "mag": 13.486,
+    "bv": 0.50,
+    "ub": 0.05,
+    "redshift": 0.00,
+    "objType": 0,
+    "code": 50005000,
+    "specType": "G0 V"
+  },
+  {
+    "name": "5",
+    "ra": 13.129909,
+    "dec": 28.60019,
+    "mag": 12.590,
+    "bv": 0.20,
+    "ub": 0.05,
+    "redshift": 0.00,
+    "objType": 0,
+    "code": 30405000,
+    "specType": "A4 V"
+  },
+  {
+    "name": "NGC 4874",
+    "ra": 12.996667,
+    "dec": 27.959722,
+    "mag": 11.8,
+    "bv": 1.0,
+    "ub": 0.6,
+    "redshift": 0.024,
+    "objType": 1,
+    "code": 60,
+    "specType": ""
+  },
+  {
+    "name": "NGC 4889",
+    "ra": 13.000833,
+    "dec": 27.976944,
+    "mag": 11.4,
+    "bv": 1.0,
+    "ub": 0.6,
+    "redshift": 0.024,
+    "objType": 1,
+    "code": 70,
+    "specType": ""
+  }
+]
