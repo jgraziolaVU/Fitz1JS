@@ -19,18 +19,18 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('Telescope Control Panel - Ready!');
 });
 
-// Window resize handler
+// Window resize handler - FIXED
 function handleWindowResize() {
     if (telescopeController) {
         telescopeController.updateDisplay();
     }
     
-    // Update instrument panels if open
-    if (window.photometerController && window.photometerController.panel.style.display !== 'none') {
+    // Update instrument panels if open - FIXED: Added proper null checks
+    if (window.photometerController && window.photometerController.updateApertureView) {
         window.photometerController.updateApertureView();
     }
     
-    if (window.spectrometerController && window.spectrometerController.panel.style.display !== 'none') {
+    if (window.spectrometerController && window.spectrometerController.updateSpectrometerView) {
         window.spectrometerController.updateSpectrometerView();
     }
 }
@@ -172,15 +172,22 @@ window.debugTelescope = {
         telescopeController.updateDisplay();
     },
     
-    openPhotometer: () => {
-        if (telescopeController) {
-            telescopeController.openPhotometer();
-        }
-    },
-    
-    openSpectrometer: () => {
-        if (telescopeController) {
-            telescopeController.openSpectrometer();
+    testSpectrometer: () => {
+        if (window.spectrometerController) {
+            console.log('Spectrometer controller exists');
+            console.log('Current object:', window.spectrometerController.currentObject);
+            console.log('Objects in catalog:', telescopeController.catalog.objects.map(obj => obj.name));
+            
+            // Test slit detection
+            const result = telescopeController.catalog.findObjectsInSlit(
+                telescopeController.centerRA, 
+                telescopeController.centerDec,
+                CONSTANTS.SLIT_WIDTH_DEG,
+                CONSTANTS.SLIT_HEIGHT_DEG
+            );
+            console.log('Objects in slit:', result);
+        } else {
+            console.log('Spectrometer controller not found');
         }
     }
 };
@@ -195,6 +202,7 @@ console.log(`
 │                                         │
 │  Try: debugTelescope.getState()         │
 │       debugTelescope.loadSampleField()  │
+│       debugTelescope.testSpectrometer() │
 ╰─────────────────────────────────────────╯
 `);
 
