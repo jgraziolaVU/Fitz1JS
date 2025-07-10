@@ -144,13 +144,45 @@ class Catalog {
         );
     }
     
-    // Find objects within spectrometer slit
+    // Find objects within spectrometer slit - FIXED VERSION
     findObjectsInSlit(centerRA, centerDec, slitWidthDeg, slitHeightDeg) {
-        return this.objects.filter(obj => {
-            const dRA = Math.abs((obj.ra - centerRA) * 15 * Math.cos(Utils.degreesToRadians(centerDec)));
+        console.log('=== SLIT DETECTION DEBUG ===');
+        console.log('Center position:', centerRA.toFixed(5), centerDec.toFixed(5));
+        console.log('Slit dimensions:', slitWidthDeg.toFixed(6), 'x', slitHeightDeg.toFixed(6), 'degrees');
+        console.log('Slit half-widths:', (slitWidthDeg/2).toFixed(6), 'x', (slitHeightDeg/2).toFixed(6), 'degrees');
+        console.log('Total objects to check:', this.objects.length);
+        
+        const objectsInSlit = this.objects.filter(obj => {
+            // Calculate angular separations more carefully
+            const cosDec = Math.cos(Utils.degreesToRadians(centerDec));
+            const dRA = Math.abs((obj.ra - centerRA) * 15 * cosDec); // Convert RA hours to degrees and apply cos(dec)
             const dDec = Math.abs(obj.dec - centerDec);
-            return dRA <= slitWidthDeg/2 && dDec <= slitHeightDeg/2;
+            
+            console.log(`Object ${obj.name}: RA=${obj.ra.toFixed(5)}h, Dec=${obj.dec.toFixed(5)}°`);
+            console.log(`  → dRA=${dRA.toFixed(6)}°, dDec=${dDec.toFixed(6)}°`);
+            console.log(`  → Limits: dRA<=${(slitWidthDeg/2).toFixed(6)}°, dDec<=${(slitHeightDeg/2).toFixed(6)}°`);
+            
+            // Check if object is within slit (more generous tolerance)
+            const inSlitRA = dRA <= slitWidthDeg/2;
+            const inSlitDec = dDec <= slitHeightDeg/2;
+            const inSlit = inSlitRA && inSlitDec;
+            
+            console.log(`  → In slit: RA=${inSlitRA}, Dec=${inSlitDec}, Overall=${inSlit}`);
+            
+            if (inSlit) {
+                console.log(`✓ Object ${obj.name} IS in slit!`);
+            }
+            
+            return inSlit;
         });
+        
+        console.log(`=== RESULT: Found ${objectsInSlit.length} objects in slit ===`);
+        if (objectsInSlit.length > 0) {
+            console.log('Objects in slit:', objectsInSlit.map(obj => obj.name));
+        }
+        console.log('=== END SLIT DETECTION ===');
+        
+        return objectsInSlit;
     }
     
     // Get nearest object to coordinates
