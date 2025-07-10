@@ -9,16 +9,24 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/astronomy-engine/2.1.19/astronomy.min.js"></script>
 </head>
 <body>
-    <div id="app">
-        <!-- Main Control Panel -->
-        <div class="main-panel">
-            <h1>Telescope Control Panel</h1>
-            
-            <!-- Selection Controls -->
-            <div class="selection-controls">
-                <button id="select-telescope" class="control-btn">Select Telescope</button>
-                <button id="select-field" class="control-btn">Select Field</button>
-                <button id="select-datetime" class="control-btn">Select Date/Time</button>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="header">
+            <h1>🔭 Telescope Control Panel</h1>
+            <div class="controls-row">
+                <button class="modern-btn" id="select-telescope">
+                    🛰️ Select Telescope
+                </button>
+                <button class="modern-btn" id="select-field">
+                    🌌 Select Field
+                </button>
+                <button class="modern-btn" id="select-datetime">
+                    🕐 Date & Time
+                </button>
+                <div class="status-indicator">
+                    <div class="status-dot" id="connection-status"></div>
+                    <span>Connected</span>
+                </div>
             </div>
             
             <!-- Info Display -->
@@ -26,50 +34,139 @@
                 <div id="telescope-info">No telescope selected</div>
                 <div id="field-info">No field selected</div>
             </div>
-            
-            <hr class="separator">
-            
-            <!-- Main Content Area -->
-            <div class="main-content">
-                <!-- Left Info Panel -->
-                <div class="left-panel">
-                    <div class="info-labels">
-                        <div id="local-date">Date: ----------</div>
-                        <div id="local-time">Local Time: --:--:--</div>
-                        <div id="sidereal-time">Sidereal Time: --:--:--</div>
-                        <div id="center-ra">RA: --h --m --s</div>
-                        <div id="center-dec">Dec: ±--° --′ --″</div>
-                        <div id="altitude">Altitude: --°</div>
-                        <div id="azimuth">Azimuth: --°</div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Telescope Info Cards -->
+            <div class="telescope-info">
+                <div class="info-card">
+                    <div class="info-label">Date</div>
+                    <div class="info-value" id="local-date">----------</div>
+                </div>
+                <div class="info-card">
+                    <div class="info-label">Local Time</div>
+                    <div class="info-value" id="local-time">--:--:--</div>
+                </div>
+                <div class="info-card">
+                    <div class="info-label">Sidereal Time</div>
+                    <div class="info-value" id="sidereal-time">--:--:--</div>
+                </div>
+                <div class="info-card">
+                    <div class="info-label">RA</div>
+                    <div class="info-value" id="center-ra">--h --m --s</div>
+                </div>
+                <div class="info-card">
+                    <div class="info-label">Dec</div>
+                    <div class="info-value" id="center-dec">±--° --′ --″</div>
+                </div>
+                <div class="info-card">
+                    <div class="info-label">Altitude</div>
+                    <div class="info-value" id="altitude">--°</div>
+                </div>
+                <div class="info-card">
+                    <div class="info-label">Azimuth</div>
+                    <div class="info-value" id="azimuth">--°</div>
+                </div>
+                <div class="info-card">
+                    <div class="info-label">Airmass</div>
+                    <div class="info-value" id="airmass">--</div>
+                </div>
+            </div>
+
+            <!-- Finder View -->
+            <div class="finder-section">
+                <canvas class="finder-canvas" id="finder-canvas" width="600" height="600"></canvas>
+                
+                <!-- Slew Controls -->
+                <div class="slew-controls">
+                    <button class="direction-btn" id="north-btn">⬆️ N</button>
+                    <button class="speed-btn modern-btn" id="speed-btn">Slew: Medium</button>
+                    <button class="direction-btn" id="west-btn">⬅️ W</button>
+                    <button class="direction-btn" id="east-btn">➡️ E</button>
+                    <button class="direction-btn" id="south-btn">⬇️ S</button>
+                    <button class="abort-btn direction-btn" id="abort-btn">🛑 Abort Slew</button>
+                </div>
+            </div>
+        </main>
+
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <!-- Photometer Panel -->
+            <div class="instrument-panel" id="photometer-section">
+                <div class="panel-header">
+                    <div class="panel-icon">📸</div>
+                    <div class="panel-title">Photometer</div>
+                    <div class="status-indicator" style="margin-left: auto;">
+                        <div class="status-dot inactive" id="photometer-status"></div>
+                        <span>Ready</span>
                     </div>
                 </div>
                 
-                <!-- Finder View -->
-                <div class="finder-container">
-                    <canvas id="finder-canvas" width="800" height="800"></canvas>
+                <canvas class="instrument-canvas" id="photometer-canvas" width="360" height="200"></canvas>
+                
+                <div class="aperture-info">
+                    <div id="aperture-objects">No objects in aperture</div>
+                </div>
+                
+                <div class="photometer-controls">
+                    <div class="filter-controls">
+                        <button class="filter-btn" data-filter="U">U</button>
+                        <button class="filter-btn active" data-filter="B">B</button>
+                        <button class="filter-btn active" data-filter="V">V</button>
+                    </div>
+                    
+                    <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                        <button class="modern-btn" id="aperture-btn">Aperture: 20"</button>
+                        <button class="modern-btn" id="integration-btn">Integration: 1.0s</button>
+                    </div>
+                    
+                    <button class="modern-btn" id="atmosphere-btn">Atmosphere: On</button>
+                    <button class="modern-btn start-btn" id="start-integration">✨ Begin Integration</button>
+                    
+                    <div class="progress-container" id="progress-bar">
+                        <div class="progress-bar progress-fill"></div>
+                    </div>
+                    
+                    <div class="output-panel" id="photometry-output"></div>
                 </div>
             </div>
-            
-            <!-- Slew Controls -->
-            <div class="slew-controls">
-                <button id="speed-btn" class="speed-btn">Slew: Medium</button>
-                <button id="north-btn" class="direction-btn">N</button>
-                <button id="south-btn" class="direction-btn">S</button>
-                <button id="east-btn" class="direction-btn">E</button>
-                <button id="west-btn" class="direction-btn">W</button>
-                <button id="abort-btn" class="abort-btn">Abort Slew</button>
+
+            <!-- Spectrometer Panel -->
+            <div class="instrument-panel" id="spectrometer-section">
+                <div class="panel-header">
+                    <div class="panel-icon">🌈</div>
+                    <div class="panel-title">Spectrometer</div>
+                    <div class="status-indicator" style="margin-left: auto;">
+                        <div class="status-dot inactive" id="spectrometer-status"></div>
+                        <span>Ready</span>
+                    </div>
+                </div>
+                
+                <canvas class="instrument-canvas" id="spectrometer-canvas" width="360" height="200"></canvas>
+                
+                <div id="slit-status">No object in slit</div>
+                
+                <div class="spectrum-display" id="spectrum-plot">
+                    <canvas id="spectrum-canvas" width="360" height="150"></canvas>
+                </div>
+                
+                <div id="spectrum-status">Time: 0s  Total Counts: 0  Mean SNR: 0.00</div>
+                
+                <div class="spectrometer-controls">
+                    <button class="modern-btn start-btn" id="start-spectrum">🚀 Start Integration</button>
+                    <button class="modern-btn abort-btn" id="stop-spectrum">⏹️ Stop Integration</button>
+                </div>
             </div>
-            
-            <!-- Instrument Controls -->
-            <div class="instrument-controls">
-                <button id="open-photometer" class="instrument-btn">Open Photometer</button>
-                <button id="open-spectrometer" class="instrument-btn">Open Spectrometer</button>
-            </div>
-            
-            <!-- Object Catalog -->
-            <div class="catalog-container">
-                <h3>Object Catalog</h3>
-                <table id="catalog-table">
+
+            <!-- Catalog -->
+            <div class="catalog-section">
+                <div class="panel-header">
+                    <div class="panel-icon">📋</div>
+                    <div class="panel-title">Object Catalog</div>
+                </div>
+                
+                <table class="catalog-table" id="catalog-table">
                     <thead>
                         <tr>
                             <th>Name</th>
@@ -80,72 +177,11 @@
                         </tr>
                     </thead>
                     <tbody id="catalog-tbody">
+                        <!-- Objects will be populated by JavaScript -->
                     </tbody>
                 </table>
             </div>
-        </div>
-        
-        <!-- Photometer Panel (Initially Hidden) -->
-        <div id="photometer-panel" class="instrument-panel" style="display: none;">
-            <div class="panel-header">
-                <h2>Photometer Control Panel</h2>
-                <button class="close-btn" onclick="closePhotometer()">×</button>
-            </div>
-            
-            <div class="photometer-content">
-                <canvas id="photometer-canvas" width="600" height="600"></canvas>
-                
-                <div class="aperture-info">
-                    <div id="aperture-objects">No objects in aperture</div>
-                </div>
-                
-                <div class="photometer-controls">
-                    <div class="filter-controls">
-                        <button class="filter-btn active" data-filter="U">U</button>
-                        <button class="filter-btn" data-filter="B">B</button>
-                        <button class="filter-btn active" data-filter="V">V</button>
-                    </div>
-                    
-                    <button id="aperture-btn" class="control-btn">Aperture: 20"</button>
-                    <button id="integration-btn" class="control-btn">Integration: 1.0s</button>
-                    <button id="atmosphere-btn" class="control-btn active">Atmosphere: On</button>
-                    
-                    <button id="start-integration" class="start-btn">Begin Integration</button>
-                    <div id="progress-bar" class="progress-bar">
-                        <div class="progress-fill"></div>
-                    </div>
-                    
-                    <div id="photometry-output" class="output-panel"></div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Spectrometer Panel (Initially Hidden) -->
-        <div id="spectrometer-panel" class="instrument-panel" style="display: none;">
-            <div class="panel-header">
-                <h2>Spectrometer Control Panel</h2>
-                <button class="close-btn" onclick="closeSpectrometer()">×</button>
-            </div>
-            
-            <div class="spectrometer-content">
-                <canvas id="spectrometer-canvas" width="600" height="600"></canvas>
-                
-                <div id="slit-status">No object in slit</div>
-                
-                <hr class="separator">
-                
-                <div id="spectrum-plot" class="spectrum-container">
-                    <canvas id="spectrum-canvas" width="900" height="400"></canvas>
-                </div>
-                
-                <div id="spectrum-status">Time: 0s  Total Counts: 0  Mean SNR: 0.00</div>
-                
-                <div class="spectrometer-controls">
-                    <button id="start-spectrum" class="start-btn">Start Integration</button>
-                    <button id="stop-spectrum" class="stop-btn">Stop Integration</button>
-                </div>
-            </div>
-        </div>
+        </aside>
     </div>
     
     <!-- Modal for Selections -->
@@ -161,6 +197,7 @@
         </div>
     </div>
     
+    <!-- Keep all your existing JavaScript files -->
     <script src="js/constants.js"></script>
     <script src="js/utils.js"></script>
     <script src="js/catalog.js"></script>
