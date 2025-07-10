@@ -115,12 +115,12 @@ const Utils = {
     
     // Photometry utilities
     magToFlux: (mag, band) => {
-        const zeroPoint = CONSTANTS.ZERO_POINT_PHOTONS[band];
+        const zeroPoint = CONSTANTS.ZERO_POINT_PHOTONS[band] || CONSTANTS.ZERO_POINT_PHOTONS['V'];
         return zeroPoint * Math.pow(10, -0.4 * mag);
     },
     
     applyExtinction: (flux, band, airmass) => {
-        const k = CONSTANTS.EXTINCTION_COEFF[band];
+        const k = CONSTANTS.EXTINCTION_COEFF[band] || CONSTANTS.EXTINCTION_COEFF['V'];
         return flux * Math.pow(10, -0.4 * k * airmass);
     },
     
@@ -137,7 +137,7 @@ const Utils = {
             return k - 1;
         } else {
             // Use normal approximation for large lambda
-            return Math.max(0, Math.round(lambda + Math.sqrt(lambda) * this.normalRandom()));
+            return Math.max(0, Math.round(lambda + Math.sqrt(lambda) * Utils.normalRandom()));
         }
     },
     
@@ -174,6 +174,8 @@ const Utils = {
     
     getTemperatureFromSpectralType: (spectralType) => {
         // Simplified temperature mapping
+        if (!spectralType || spectralType === '') return 5800; // Default to solar temperature
+        
         const type = spectralType.charAt(0);
         const subtype = parseInt(spectralType.charAt(1)) || 0;
         
@@ -283,3 +285,8 @@ const Utils = {
         return stars;
     }
 };
+
+// Make sure Utils is globally available
+if (typeof window !== 'undefined') {
+    window.Utils = Utils;
+}
