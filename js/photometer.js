@@ -234,7 +234,7 @@ class PhotometerController {
             this.integrationProgress = (currentStep / totalSteps) * 100;
             
             // Update progress bar
-            const progressFill = document.querySelector('#photometer-progress, .progress-fill');
+            const progressFill = document.querySelector('.progress-fill');
             if (progressFill) {
                 progressFill.style.width = `${this.integrationProgress}%`;
             }
@@ -263,7 +263,7 @@ class PhotometerController {
             .forEach(el => el.disabled = false);
         
         // Reset progress bar
-        const progressFill = document.querySelector('#photometer-progress, .progress-fill');
+        const progressFill = document.querySelector('.progress-fill');
         if (progressFill) {
             progressFill.style.width = '0%';
         }
