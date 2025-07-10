@@ -1,4 +1,4 @@
-// Main telescope control class
+// Main telescope control class - Updated for new layout
 
 class TelescopeController {
     constructor() {
@@ -26,12 +26,17 @@ class TelescopeController {
         // Update timer
         this.updateTimer = null;
         
+        // Instrument controllers - Initialize immediately
+        this.photometerController = null;
+        this.spectrometerController = null;
+        
         this.init();
     }
     
     init() {
         this.setupCanvas();
         this.setupEventListeners();
+        this.initializeInstruments(); // Initialize instruments right away
         this.startUpdateTimer();
         this.updateDisplay();
     }
@@ -44,6 +49,21 @@ class TelescopeController {
         this.finderCanvas.addEventListener('click', (event) => {
             this.handleCanvasClick(event);
         });
+    }
+    
+    // Initialize instruments immediately instead of on-demand
+    initializeInstruments() {
+        console.log('Initializing instruments...');
+        
+        // Initialize photometer
+        this.photometerController = new PhotometerController(this);
+        window.photometerController = this.photometerController; // For global access
+        
+        // Initialize spectrometer  
+        this.spectrometerController = new SpectrometerController(this);
+        window.spectrometerController = this.spectrometerController; // For global access
+        
+        console.log('Instruments initialized');
     }
     
     setupEventListeners() {
@@ -78,15 +98,6 @@ class TelescopeController {
         document.getElementById('abort-btn').addEventListener('click', () => {
             this.abortSlewing();
         });
-        
-        // Instrument controls
-        document.getElementById('open-photometer').addEventListener('click', () => {
-            this.openPhotometer();
-        });
-        
-        document.getElementById('open-spectrometer').addEventListener('click', () => {
-            this.openSpectrometer();
-        });
     }
     
     startUpdateTimer() {
@@ -101,31 +112,44 @@ class TelescopeController {
         this.updateCoordinateDisplay();
         this.drawFinderView();
         this.updateCatalogTable();
+        
+        // Update instruments if they exist
+        if (this.photometerController) {
+            this.photometerController.updateApertureView();
+        }
+        
+        if (this.spectrometerController) {
+            this.spectrometerController.updateSpectrometerView();
+        }
     }
     
     updateTimeDisplay() {
         const date = this.currentDateTime;
         
-        document.getElementById('local-date').textContent = `Date: ${Utils.formatDate(date)}`;
-        document.getElementById('local-time').textContent = `Local Time: ${Utils.formatTime(date)}`;
+        document.getElementById('local-date').textContent = Utils.formatDate(date);
+        document.getElementById('local-time').textContent = Utils.formatTime(date);
         
         if (this.currentTelescope) {
             const lst = Utils.calculateLST(date, this.currentTelescope.longitude);
             const lstFormatted = Utils.formatRA(lst);
-            document.getElementById('sidereal-time').textContent = `Sidereal Time: ${lstFormatted}`;
+            document.getElementById('sidereal-time').textContent = lstFormatted;
         }
     }
     
     updateCoordinateDisplay() {
-        document.getElementById('center-ra').textContent = `RA: ${Utils.formatRA(this.centerRA)}`;
-        document.getElementById('center-dec').textContent = `Dec: ${Utils.formatDec(this.centerDec)}`;
+        document.getElementById('center-ra').textContent = Utils.formatRA(this.centerRA);
+        document.getElementById('center-dec').textContent = Utils.formatDec(this.centerDec);
         
         if (this.currentTelescope) {
             const lst = Utils.calculateLST(this.currentDateTime, this.currentTelescope.longitude);
             const altAz = Utils.calculateAltAz(this.centerRA, this.centerDec, lst, this.currentTelescope.latitude);
             
-            document.getElementById('altitude').textContent = `Altitude: ${altAz.altitude.toFixed(1)}°`;
-            document.getElementById('azimuth').textContent = `Azimuth: ${altAz.azimuth.toFixed(1)}°`;
+            document.getElementById('altitude').textContent = `${altAz.altitude.toFixed(1)}°`;
+            document.getElementById('azimuth').textContent = `${altAz.azimuth.toFixed(1)}°`;
+            
+            // Update airmass
+            const airmass = Utils.calculateAirmass(altAz.altitude);
+            document.getElementById('airmass').textContent = airmass.toFixed(2);
         }
     }
     
@@ -200,7 +224,7 @@ class TelescopeController {
                 <td>${obj.ra.toFixed(5)}</td>
                 <td>${obj.dec.toFixed(5)}</td>
                 <td>${obj.mag.toFixed(2)}</td>
-                <td>${obj.specType}</td>
+                <td>${obj.objType === 0 ? 'Star' : 'Galaxy'}</td>
             `;
             row.addEventListener('click', () => this.selectObject(obj));
             tbody.appendChild(row);
@@ -227,7 +251,11 @@ class TelescopeController {
             document.getElementById('field-info').textContent = `Field: ${field.name}`;
             
             // Load catalog
-            await this.catalog.loadFromFile(field.filename);
+            try {
+                await this.catalog.loadFromFile(field.filename);
+            } catch (error) {
+                console.warn('Could not load catalog file, using sample data');
+            }
             
             // Generate background stars if needed
             this.catalog.generateBackgroundStars(
@@ -411,23 +439,6 @@ class TelescopeController {
         const nearest = this.catalog.getNearestObject(clickRA, clickDec);
         if (nearest.object && nearest.distance < 0.1) { // Within 0.1 degrees
             this.selectObject(nearest.object);
-        }
-    }
-    
-    // Instrument controls
-    openPhotometer() {
-        if (window.photometerController) {
-            window.photometerController.show();
-        } else {
-            window.photometerController = new PhotometerController(this);
-        }
-    }
-    
-    openSpectrometer() {
-        if (window.spectrometerController) {
-            window.spectrometerController.show();
-        } else {
-            window.spectrometerController = new SpectrometerController(this);
         }
     }
     
