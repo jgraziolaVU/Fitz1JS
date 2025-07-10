@@ -1,9 +1,8 @@
-// Photometer instrument controller
+// Photometer instrument controller - Updated for new layout
 
 class PhotometerController {
     constructor(telescopeController) {
         this.telescope = telescopeController;
-        this.panel = document.getElementById('photometer-panel');
         this.canvas = document.getElementById('photometer-canvas');
         this.ctx = this.canvas.getContext('2d');
         
@@ -23,51 +22,79 @@ class PhotometerController {
     }
     
     init() {
+        console.log('Initializing photometer controller...');
         this.setupEventListeners();
         this.updateControls();
-        this.show();
+        this.updateApertureView();
     }
     
     setupEventListeners() {
         // Filter buttons
         document.querySelectorAll('.filter-btn').forEach(btn => {
             btn.addEventListener('click', () => {
-                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                this.currentFilter = btn.dataset.filter;
+                // Toggle filter selection (multiple filters can be active)
+                btn.classList.toggle('active');
+                
+                // Set current filter to first active filter
+                const activeFilters = document.querySelectorAll('.filter-btn.active');
+                if (activeFilters.length > 0) {
+                    this.currentFilter = activeFilters[0].dataset.filter;
+                }
                 this.updateApertureView();
             });
         });
         
         // Aperture control
-        document.getElementById('aperture-btn').addEventListener('click', () => {
-            this.cycleAperture();
-        });
+        const apertureBtn = document.getElementById('aperture-btn');
+        if (apertureBtn) {
+            apertureBtn.addEventListener('click', () => {
+                this.cycleAperture();
+            });
+        }
         
         // Integration time control
-        document.getElementById('integration-btn').addEventListener('click', () => {
-            this.cycleIntegrationTime();
-        });
+        const integrationBtn = document.getElementById('integration-btn');
+        if (integrationBtn) {
+            integrationBtn.addEventListener('click', () => {
+                this.cycleIntegrationTime();
+            });
+        }
         
         // Atmosphere toggle
-        document.getElementById('atmosphere-btn').addEventListener('click', () => {
-            this.toggleAtmosphere();
-        });
+        const atmosphereBtn = document.getElementById('atmosphere-btn');
+        if (atmosphereBtn) {
+            atmosphereBtn.addEventListener('click', () => {
+                this.toggleAtmosphere();
+            });
+        }
         
         // Start integration
-        document.getElementById('start-integration').addEventListener('click', () => {
-            this.startIntegration();
-        });
+        const startBtn = document.getElementById('start-integration');
+        if (startBtn) {
+            startBtn.addEventListener('click', () => {
+                this.startIntegration();
+            });
+        }
     }
     
     updateControls() {
         const aperture = CONSTANTS.APERTURE_SIZES[this.apertureIndex];
         const integrationTime = CONSTANTS.INTEGRATION_TIMES[this.integrationIndex];
         
-        document.getElementById('aperture-btn').textContent = `Aperture: ${aperture}"`;
-        document.getElementById('integration-btn').textContent = `Integration: ${integrationTime}s`;
-        document.getElementById('atmosphere-btn').textContent = `Atmosphere: ${this.atmosphereEnabled ? 'On' : 'Off'}`;
-        document.getElementById('atmosphere-btn').classList.toggle('active', this.atmosphereEnabled);
+        const apertureBtn = document.getElementById('aperture-btn');
+        const integrationBtn = document.getElementById('integration-btn');
+        const atmosphereBtn = document.getElementById('atmosphere-btn');
+        
+        if (apertureBtn) {
+            apertureBtn.textContent = `📏 ${aperture}"`;
+        }
+        if (integrationBtn) {
+            integrationBtn.textContent = `⏱️ ${integrationTime}s`;
+        }
+        if (atmosphereBtn) {
+            atmosphereBtn.textContent = `Atmosphere: ${this.atmosphereEnabled ? 'On' : 'Off'}`;
+            atmosphereBtn.classList.toggle('active', this.atmosphereEnabled);
+        }
     }
     
     cycleAperture() {
@@ -86,21 +113,8 @@ class PhotometerController {
         this.updateControls();
     }
     
-    show() {
-        this.panel.style.display = 'block';
-        this.updateApertureView();
-    }
-    
-    hide() {
-        this.panel.style.display = 'none';
-        if (this.integrationTimer) {
-            clearInterval(this.integrationTimer);
-            this.integrationTimer = null;
-        }
-    }
-    
     updateApertureView() {
-        if (!this.telescope.currentField) return;
+        if (!this.telescope.currentField || !this.canvas) return;
         
         const canvas = this.canvas;
         const ctx = this.ctx;
@@ -155,20 +169,16 @@ class PhotometerController {
         const aperture = CONSTANTS.APERTURE_SIZES[this.apertureIndex];
         const apertureRadius = (aperture / 3600.0) * pixelsPerDegree; // Convert arcsec to pixels
         
-        ctx.strokeStyle = '#ffff00';
+        ctx.strokeStyle = '#00d4ff'; // Use modern accent color
         ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.arc(centerX, centerY, apertureRadius, 0, 2 * Math.PI);
         ctx.stroke();
         
-        // Draw border and labels
-        ctx.strokeStyle = '#ffff00';
+        // Draw border
+        ctx.strokeStyle = '#ffffff20';
         ctx.lineWidth = 1;
         ctx.strokeRect(0, 0, width, height);
-        
-        Utils.drawText(ctx, 'Photometer View', centerX - 60, 20, '#ffff00', '14px Arial');
-        const fovArcmin = fov * 60;
-        Utils.drawText(ctx, `FOV ${fovArcmin.toFixed(1)}′ × ${fovArcmin.toFixed(1)}′`, 10, height - 10, '#ffff00', '10px Arial');
         
         // Update aperture contents
         this.updateApertureContents();
@@ -184,22 +194,31 @@ class PhotometerController {
         
         const apertureInfo = document.getElementById('aperture-objects');
         
-        if (objectsInAperture.length === 0) {
-            apertureInfo.textContent = 'Object SKY is within the aperture';
-        } else {
-            const objectList = objectsInAperture.map(obj => {
-                const type = obj.objType === 0 ? 'Star' : 'Galaxy';
-                return `Object ${obj.name} (${type}) is within the aperture`;
-            }).join('\n');
-            apertureInfo.textContent = objectList;
+        if (apertureInfo) {
+            if (objectsInAperture.length === 0) {
+                apertureInfo.textContent = 'Object SKY is within the aperture';
+            } else {
+                const objectList = objectsInAperture.map(obj => {
+                    const type = obj.objType === 0 ? 'Star' : 'Galaxy';
+                    return `Object ${obj.name} (${type}) is within the aperture`;
+                }).join(', ');
+                apertureInfo.textContent = objectList;
+            }
         }
     }
     
     startIntegration() {
         if (this.integrating) return;
         
+        console.log('Starting photometer integration...');
         this.integrating = true;
         this.integrationProgress = 0;
+        
+        // Update status indicator
+        const statusDot = document.getElementById('photometer-status');
+        if (statusDot) {
+            statusDot.classList.remove('inactive');
+        }
         
         // Disable controls during integration
         document.querySelectorAll('.filter-btn, #aperture-btn, #integration-btn, #atmosphere-btn, #start-integration')
@@ -215,8 +234,10 @@ class PhotometerController {
             this.integrationProgress = (currentStep / totalSteps) * 100;
             
             // Update progress bar
-            const progressFill = document.querySelector('.progress-fill');
-            progressFill.style.width = `${this.integrationProgress}%`;
+            const progressFill = document.querySelector('#photometer-progress, .progress-fill');
+            if (progressFill) {
+                progressFill.style.width = `${this.integrationProgress}%`;
+            }
             
             if (currentStep >= totalSteps) {
                 this.completeIntegration();
@@ -229,13 +250,23 @@ class PhotometerController {
         clearInterval(this.integrationTimer);
         this.integrationTimer = null;
         
+        console.log('Photometer integration complete');
+        
+        // Update status indicator
+        const statusDot = document.getElementById('photometer-status');
+        if (statusDot) {
+            statusDot.classList.add('inactive');
+        }
+        
         // Re-enable controls
         document.querySelectorAll('.filter-btn, #aperture-btn, #integration-btn, #atmosphere-btn, #start-integration')
             .forEach(el => el.disabled = false);
         
         // Reset progress bar
-        const progressFill = document.querySelector('.progress-fill');
-        progressFill.style.width = '0%';
+        const progressFill = document.querySelector('#photometer-progress, .progress-fill');
+        if (progressFill) {
+            progressFill.style.width = '0%';
+        }
         
         // Perform photometry
         this.performPhotometry();
@@ -333,23 +364,26 @@ class PhotometerController {
         const integrationTime = CONSTANTS.INTEGRATION_TIMES[this.integrationIndex];
         
         const output = document.getElementById('photometry-output');
+        if (!output) return;
         
         Object.entries(results).forEach(([objName, counts]) => {
             const line = `${this.observationCount}. ${objName}: filter=${this.currentFilter}, aperture=${aperture}", t=${integrationTime}s, airmass=${airmass.toFixed(2)}, counts=${counts.toLocaleString()}`;
             
             const div = document.createElement('div');
             div.textContent = line;
+            div.style.fontSize = '12px';
+            div.style.marginBottom = '2px';
             output.appendChild(div);
         });
         
         // Scroll to bottom
         output.scrollTop = output.scrollHeight;
-    }
-}
-
-// Close photometer function
-function closePhotometer() {
-    if (window.photometerController) {
-        window.photometerController.hide();
+        
+        // Update results summary
+        const resultsEl = document.getElementById('photometer-results');
+        if (resultsEl) {
+            const totalCounts = Object.values(results).reduce((sum, counts) => sum + counts, 0);
+            resultsEl.textContent = `Latest: ${totalCounts} counts (${this.currentFilter} filter)`;
+        }
     }
 }
