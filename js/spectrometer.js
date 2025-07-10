@@ -4,9 +4,9 @@ class SpectrometerController {
     constructor(telescopeController) {
         this.telescope = telescopeController;
         this.canvas = document.getElementById('spectrometer-canvas');
-        this.ctx = this.canvas.getContext('2d');
+        this.ctx = this.canvas ? this.canvas.getContext('2d') : null;
         this.spectrumCanvas = document.getElementById('spectrum-canvas');
-        this.spectrumCtx = this.spectrumCanvas.getContext('2d');
+        this.spectrumCtx = this.spectrumCanvas ? this.spectrumCanvas.getContext('2d') : null;
         
         // Spectrometer state
         this.currentObject = null;
@@ -23,6 +23,12 @@ class SpectrometerController {
     
     init() {
         console.log('Initializing spectrometer controller...');
+        
+        if (!this.canvas || !this.spectrumCanvas) {
+            console.error('Spectrometer canvases not found!');
+            return;
+        }
+        
         this.setupEventListeners();
         this.generateWavelengthGrid();
         this.updateSpectrometerView();
@@ -33,17 +39,25 @@ class SpectrometerController {
         // Start integration
         const startBtn = document.getElementById('start-spectrum');
         if (startBtn) {
+            console.log('Setting up start button listener');
             startBtn.addEventListener('click', () => {
+                console.log('Start button clicked');
                 this.startIntegration();
             });
+        } else {
+            console.error('Start spectrum button not found!');
         }
         
         // Stop integration
         const stopBtn = document.getElementById('stop-spectrum');
         if (stopBtn) {
+            console.log('Setting up stop button listener');
             stopBtn.addEventListener('click', () => {
+                console.log('Stop button clicked');
                 this.stopIntegration();
             });
+        } else {
+            console.error('Stop spectrum button not found!');
         }
         
         // Canvas click for spectrum analysis
@@ -60,10 +74,11 @@ class SpectrometerController {
             this.wavelengths.push(w);
         }
         this.counts = new Array(this.wavelengths.length).fill(0);
+        console.log(`Generated wavelength grid: ${this.wavelengths.length} points from ${CONSTANTS.SPECTRUM_MIN_WAVE} to ${CONSTANTS.SPECTRUM_MAX_WAVE} Å`);
     }
     
     updateSpectrometerView() {
-        if (!this.telescope.currentField || !this.canvas) return;
+        if (!this.telescope.currentField || !this.canvas || !this.ctx) return;
         
         const canvas = this.canvas;
         const ctx = this.ctx;
@@ -140,11 +155,17 @@ class SpectrometerController {
     }
     
     updateSlitContents() {
+        console.log('Updating slit contents...');
+        
+        // Use more generous slit dimensions for detection
+        const slitWidthDeg = CONSTANTS.SLIT_WIDTH_DEG * 10; // Make slit 10x wider for detection
+        const slitHeightDeg = CONSTANTS.SLIT_HEIGHT_DEG * 5; // Make slit 5x taller for detection
+        
         const objectsInSlit = this.telescope.catalog.findObjectsInSlit(
             this.telescope.centerRA,
             this.telescope.centerDec,
-            CONSTANTS.SLIT_WIDTH_DEG,
-            CONSTANTS.SLIT_HEIGHT_DEG
+            slitWidthDeg,
+            slitHeightDeg
         );
         
         const slitStatus = document.getElementById('slit-status');
@@ -152,7 +173,9 @@ class SpectrometerController {
         if (slitStatus) {
             if (objectsInSlit.length === 0) {
                 slitStatus.textContent = 'No object in slit';
+                slitStatus.style.color = '#a1a1aa';
                 this.currentObject = null;
+                console.log('No objects found in slit');
             } else {
                 // Find the nearest object to slit center
                 let nearest = objectsInSlit[0];
@@ -171,14 +194,30 @@ class SpectrometerController {
                 
                 const type = nearest.objType === 0 ? 'Star' : 'Galaxy';
                 slitStatus.textContent = `Object ${nearest.name} (${type}) is within the slit`;
+                slitStatus.style.color = '#10b981';
                 this.currentObject = nearest;
+                console.log(`Found object in slit: ${nearest.name} (${type})`);
             }
         }
     }
     
     startIntegration() {
-        if (!this.currentObject || this.integrating) {
-            console.log('Cannot start integration:', !this.currentObject ? 'No object in slit' : 'Already integrating');
+        console.log('startIntegration called');
+        console.log('Current object:', this.currentObject);
+        console.log('Currently integrating:', this.integrating);
+        
+        if (!this.currentObject) {
+            console.log('Cannot start integration: No object in slit');
+            // Try to update slit contents to see if we can find an object
+            this.updateSlitContents();
+            if (!this.currentObject) {
+                alert('No object in slit. Please slew to an object first.');
+                return;
+            }
+        }
+        
+        if (this.integrating) {
+            console.log('Already integrating, ignoring start request');
             return;
         }
         
@@ -202,10 +241,15 @@ class SpectrometerController {
         this.integrationTimer = setInterval(() => {
             this.updateIntegration();
         }, 250); // Update every 250ms
+        
+        console.log('Integration started successfully');
     }
     
     stopIntegration() {
-        if (!this.integrating) return;
+        if (!this.integrating) {
+            console.log('Not currently integrating');
+            return;
+        }
         
         console.log('Stopping spectrometer integration');
         
@@ -223,10 +267,17 @@ class SpectrometerController {
         
         this.plotMode = 'line';
         this.plotSpectrum();
+        
+        console.log('Integration stopped');
     }
     
     generateSpectrum() {
-        if (!this.currentObject) return;
+        if (!this.currentObject) {
+            console.error('Cannot generate spectrum: no current object');
+            return;
+        }
+        
+        console.log('Generating spectrum for:', this.currentObject.name);
         
         const obj = this.currentObject;
         const telescopeDiam = this.telescope.currentTelescope ? 
@@ -236,9 +287,11 @@ class SpectrometerController {
         
         if (obj.objType === 1) {
             // Galaxy spectrum with redshift
+            console.log('Generating galaxy spectrum with redshift:', obj.redshift);
             relativeFlux = Utils.generateGalaxySpectrum(obj.redshift, this.wavelengths);
         } else {
             // Stellar spectrum
+            console.log('Generating stellar spectrum for spectral type:', obj.specType);
             relativeFlux = Utils.generateStellarSpectrum(obj.specType, this.wavelengths);
         }
         
@@ -255,10 +308,11 @@ class SpectrometerController {
         this.rates = relativeFlux.map((flux, i) => {
             const wavelengthM = this.wavelengths[i] * 1e-10;
             const photonEnergy = (CONSTANTS.H_PLANCK * CONSTANTS.C_LIGHT) / wavelengthM;
-            return flux * (fluxSI / photonEnergy) * telescopeArea;
+            const rate = flux * (fluxSI / photonEnergy) * telescopeArea;
+            return Math.max(0.01, rate); // Minimum rate to ensure some signal
         });
         
-        console.log('Generated spectrum for:', obj.name, 'with', this.rates.length, 'wavelength points');
+        console.log(`Generated spectrum rates: min=${Math.min(...this.rates).toFixed(3)}, max=${Math.max(...this.rates).toFixed(3)}`);
     }
     
     updateIntegration() {
@@ -276,7 +330,7 @@ class SpectrometerController {
     }
     
     plotSpectrum() {
-        if (!this.spectrumCanvas) return;
+        if (!this.spectrumCanvas || !this.spectrumCtx) return;
         
         const canvas = this.spectrumCanvas;
         const ctx = this.spectrumCtx;
@@ -336,22 +390,26 @@ class SpectrometerController {
             // Scatter plot during integration
             ctx.fillStyle = '#0066cc';
             for (let i = 0; i < this.wavelengths.length; i++) {
-                const x = margin.left + (this.wavelengths[i] - minWave) / (maxWave - minWave) * plotWidth;
-                const y = height - margin.bottom - (this.counts[i] / maxCounts) * plotHeight;
-                ctx.beginPath();
-                ctx.arc(x, y, 2, 0, 2 * Math.PI);
-                ctx.fill();
+                if (this.counts[i] > 0) {
+                    const x = margin.left + (this.wavelengths[i] - minWave) / (maxWave - minWave) * plotWidth;
+                    const y = height - margin.bottom - (this.counts[i] / maxCounts) * plotHeight;
+                    ctx.beginPath();
+                    ctx.arc(x, y, 2, 0, 2 * Math.PI);
+                    ctx.fill();
+                }
             }
         } else {
             // Line plot after stopping
             ctx.strokeStyle = '#0066cc';
             ctx.lineWidth = 1;
             ctx.beginPath();
+            let started = false;
             for (let i = 0; i < this.wavelengths.length; i++) {
                 const x = margin.left + (this.wavelengths[i] - minWave) / (maxWave - minWave) * plotWidth;
                 const y = height - margin.bottom - (this.counts[i] / maxCounts) * plotHeight;
-                if (i === 0) {
+                if (!started) {
                     ctx.moveTo(x, y);
+                    started = true;
                 } else {
                     ctx.lineTo(x, y);
                 }
@@ -400,8 +458,9 @@ class SpectrometerController {
     
     updateStatus() {
         const totalCounts = this.counts.reduce((sum, count) => sum + count, 0);
-        const meanSNR = this.counts.length > 0 ? 
-            this.counts.reduce((sum, count) => sum + Math.sqrt(count), 0) / this.counts.length : 0;
+        const nonZeroCounts = this.counts.filter(count => count > 0);
+        const meanSNR = nonZeroCounts.length > 0 ? 
+            nonZeroCounts.reduce((sum, count) => sum + Math.sqrt(count), 0) / nonZeroCounts.length : 0;
         
         const statusEl = document.getElementById('spectrum-status');
         if (statusEl) {
