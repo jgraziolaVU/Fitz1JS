@@ -125,21 +125,22 @@ const Utils = {
     },
     
     poissonRandom: (lambda) => {
-        // Generate Poisson random number using Knuth's algorithm
-        if (lambda < 30) {
-            const L = Math.exp(-lambda);
-            let k = 0;
-            let p = 1;
-            do {
-                k++;
-                p *= Math.random();
-            } while (p > L);
-            return k - 1;
-        } else {
-            // Use normal approximation for large lambda
-            return Math.max(0, Math.round(lambda + Math.sqrt(lambda) * Utils.normalRandom()));
-        }
-    },
+    // Generate Poisson random number using Knuth's algorithm
+    if (lambda < 30) {
+        const L = Math.exp(-lambda);
+        let k = 0;
+        let p = 1;
+        do {
+            k++;
+            p *= Math.random();
+        } while (p > L);
+        return k - 1;
+    } else {
+        // Use normal approximation for large lambda
+        // FIXED: Changed this.normalRandom() to Utils.normalRandom()
+        return Math.max(0, Math.round(lambda + Math.sqrt(lambda) * Utils.normalRandom()));
+    }
+},
     
     normalRandom: () => {
         // Box-Muller transformation
