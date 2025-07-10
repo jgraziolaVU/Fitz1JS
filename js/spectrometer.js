@@ -1,9 +1,8 @@
-// Spectrometer instrument controller
+// Spectrometer instrument controller - Updated for new layout
 
 class SpectrometerController {
     constructor(telescopeController) {
         this.telescope = telescopeController;
-        this.panel = document.getElementById('spectrometer-panel');
         this.canvas = document.getElementById('spectrometer-canvas');
         this.ctx = this.canvas.getContext('2d');
         this.spectrumCanvas = document.getElementById('spectrum-canvas');
@@ -23,26 +22,36 @@ class SpectrometerController {
     }
     
     init() {
+        console.log('Initializing spectrometer controller...');
         this.setupEventListeners();
         this.generateWavelengthGrid();
-        this.show();
+        this.updateSpectrometerView();
+        this.clearSpectrum();
     }
     
     setupEventListeners() {
         // Start integration
-        document.getElementById('start-spectrum').addEventListener('click', () => {
-            this.startIntegration();
-        });
+        const startBtn = document.getElementById('start-spectrum');
+        if (startBtn) {
+            startBtn.addEventListener('click', () => {
+                this.startIntegration();
+            });
+        }
         
         // Stop integration
-        document.getElementById('stop-spectrum').addEventListener('click', () => {
-            this.stopIntegration();
-        });
+        const stopBtn = document.getElementById('stop-spectrum');
+        if (stopBtn) {
+            stopBtn.addEventListener('click', () => {
+                this.stopIntegration();
+            });
+        }
         
         // Canvas click for spectrum analysis
-        this.spectrumCanvas.addEventListener('click', (event) => {
-            this.handleSpectrumClick(event);
-        });
+        if (this.spectrumCanvas) {
+            this.spectrumCanvas.addEventListener('click', (event) => {
+                this.handleSpectrumClick(event);
+            });
+        }
     }
     
     generateWavelengthGrid() {
@@ -53,19 +62,8 @@ class SpectrometerController {
         this.counts = new Array(this.wavelengths.length).fill(0);
     }
     
-    show() {
-        this.panel.style.display = 'block';
-        this.updateSpectrometerView();
-        this.clearSpectrum();
-    }
-    
-    hide() {
-        this.panel.style.display = 'none';
-        this.stopIntegration();
-    }
-    
     updateSpectrometerView() {
-        if (!this.telescope.currentField) return;
+        if (!this.telescope.currentField || !this.canvas) return;
         
         const canvas = this.canvas;
         const ctx = this.ctx;
@@ -118,7 +116,7 @@ class SpectrometerController {
         const slitWidthPx = (CONSTANTS.SLIT_WIDTH_DEG / fov) * width;
         const slitHeightPx = (CONSTANTS.SLIT_HEIGHT_DEG / fov) * height;
         
-        ctx.strokeStyle = '#ffff00';
+        ctx.strokeStyle = '#00d4ff'; // Modern accent color
         ctx.lineWidth = 2;
         const slitLeft = centerX - slitWidthPx / 2;
         const slitRight = centerX + slitWidthPx / 2;
@@ -132,13 +130,10 @@ class SpectrometerController {
         ctx.lineTo(slitRight, slitBottom);
         ctx.stroke();
         
-        // Draw border and labels
-        ctx.strokeStyle = '#ffff00';
+        // Draw border
+        ctx.strokeStyle = '#ffffff20';
         ctx.lineWidth = 1;
         ctx.strokeRect(0, 0, width, height);
-        
-        Utils.drawText(ctx, 'Spectrometer View', centerX - 70, 20, '#ffff00', '14px Arial');
-        Utils.drawText(ctx, `FOV ${fov.toFixed(2)}° × ${fov.toFixed(2)}°`, 5, height - 5, '#ffff00', '9px Arial');
         
         // Update slit contents
         this.updateSlitContents();
@@ -154,38 +149,51 @@ class SpectrometerController {
         
         const slitStatus = document.getElementById('slit-status');
         
-        if (objectsInSlit.length === 0) {
-            slitStatus.textContent = 'No object in slit';
-            this.currentObject = null;
-        } else {
-            // Find the nearest object to slit center
-            let nearest = objectsInSlit[0];
-            let minDist = Infinity;
-            
-            objectsInSlit.forEach(obj => {
-                const dist = Utils.angularSeparation(
-                    this.telescope.centerRA, this.telescope.centerDec,
-                    obj.ra, obj.dec
-                );
-                if (dist < minDist) {
-                    minDist = dist;
-                    nearest = obj;
-                }
-            });
-            
-            const type = nearest.objType === 0 ? 'Star' : 'Galaxy';
-            slitStatus.textContent = `Object ${nearest.name} (${type}) is within the slit`;
-            this.currentObject = nearest;
+        if (slitStatus) {
+            if (objectsInSlit.length === 0) {
+                slitStatus.textContent = 'No object in slit';
+                this.currentObject = null;
+            } else {
+                // Find the nearest object to slit center
+                let nearest = objectsInSlit[0];
+                let minDist = Infinity;
+                
+                objectsInSlit.forEach(obj => {
+                    const dist = Utils.angularSeparation(
+                        this.telescope.centerRA, this.telescope.centerDec,
+                        obj.ra, obj.dec
+                    );
+                    if (dist < minDist) {
+                        minDist = dist;
+                        nearest = obj;
+                    }
+                });
+                
+                const type = nearest.objType === 0 ? 'Star' : 'Galaxy';
+                slitStatus.textContent = `Object ${nearest.name} (${type}) is within the slit`;
+                this.currentObject = nearest;
+            }
         }
     }
     
     startIntegration() {
-        if (!this.currentObject || this.integrating) return;
+        if (!this.currentObject || this.integrating) {
+            console.log('Cannot start integration:', !this.currentObject ? 'No object in slit' : 'Already integrating');
+            return;
+        }
+        
+        console.log('Starting spectrometer integration for:', this.currentObject.name);
         
         this.integrating = true;
         this.elapsed = 0;
         this.generateSpectrum();
         this.plotMode = 'scatter';
+        
+        // Update status indicator
+        const statusDot = document.getElementById('spectrometer-status');
+        if (statusDot) {
+            statusDot.classList.remove('inactive');
+        }
         
         // Clear previous spectrum
         this.counts.fill(0);
@@ -199,10 +207,18 @@ class SpectrometerController {
     stopIntegration() {
         if (!this.integrating) return;
         
+        console.log('Stopping spectrometer integration');
+        
         this.integrating = false;
         if (this.integrationTimer) {
             clearInterval(this.integrationTimer);
             this.integrationTimer = null;
+        }
+        
+        // Update status indicator
+        const statusDot = document.getElementById('spectrometer-status');
+        if (statusDot) {
+            statusDot.classList.add('inactive');
         }
         
         this.plotMode = 'line';
@@ -241,6 +257,8 @@ class SpectrometerController {
             const photonEnergy = (CONSTANTS.H_PLANCK * CONSTANTS.C_LIGHT) / wavelengthM;
             return flux * (fluxSI / photonEnergy) * telescopeArea;
         });
+        
+        console.log('Generated spectrum for:', obj.name, 'with', this.rates.length, 'wavelength points');
     }
     
     updateIntegration() {
@@ -258,6 +276,8 @@ class SpectrometerController {
     }
     
     plotSpectrum() {
+        if (!this.spectrumCanvas) return;
+        
         const canvas = this.spectrumCanvas;
         const ctx = this.spectrumCtx;
         const width = canvas.width;
@@ -383,8 +403,11 @@ class SpectrometerController {
         const meanSNR = this.counts.length > 0 ? 
             this.counts.reduce((sum, count) => sum + Math.sqrt(count), 0) / this.counts.length : 0;
         
-        document.getElementById('spectrum-status').textContent = 
-            `Time: ${this.elapsed}s   Total Counts: ${totalCounts}   Mean SNR: ${meanSNR.toFixed(2)}`;
+        const statusEl = document.getElementById('spectrum-status');
+        if (statusEl) {
+            statusEl.textContent = 
+                `Time: ${this.elapsed}s • Counts: ${totalCounts} • Mean SNR: ${meanSNR.toFixed(2)}`;
+        }
     }
     
     clearSpectrum() {
@@ -445,12 +468,5 @@ class SpectrometerController {
         ctx.fillRect(12, 32, 196, 16);
         ctx.fillStyle = '#000000';
         ctx.fillText(`${wavelength.toFixed(1)} Å, ${counts.toFixed(1)} counts`, 15, 44);
-    }
-}
-
-// Close spectrometer function
-function closeSpectrometer() {
-    if (window.spectrometerController) {
-        window.spectrometerController.hide();
     }
 }
