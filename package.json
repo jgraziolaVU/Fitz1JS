@@ -1,0 +1,38 @@
+{
+  "name": "telescope-emulator",
+  "version": "1.0.0",
+  "description": "Interactive telescope control panel and astronomical observation simulator",
+  "main": "index.html",
+  "scripts": {
+    "dev": "npx serve .",
+    "build": "echo 'Static site - no build needed'",
+    "start": "npx serve .",
+    "convert-data": "node scripts/convert-dat-files.js"
+  },
+  "keywords": [
+    "astronomy",
+    "telescope",
+    "education",
+    "simulation",
+    "observatory",
+    "photometry",
+    "spectroscopy"
+  ],
+  "author": "Telescope Emulator Project",
+  "license": "GPL-3.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/telescope-emulator"
+  },
+  "devDependencies": {
+    "serve": "^14.2.0"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not dead"
+  ]
+}
