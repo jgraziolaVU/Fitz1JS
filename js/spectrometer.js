@@ -1,4 +1,4 @@
-// Spectrometer instrument controller - Updated for new layout
+// Spectrometer instrument controller - Enhanced with Jacoby Atlas
 
 class SpectrometerController {
     constructor(telescopeController) {
@@ -17,11 +17,12 @@ class SpectrometerController {
         this.counts = [];
         this.rates = [];
         this.plotMode = 'scatter'; // 'scatter' during integration, 'line' after stop
+        this.spectralLibraryLoaded = false;
         
         this.init();
     }
     
-    init() {
+    async init() {
         console.log('Initializing spectrometer controller...');
         
         if (!this.canvas || !this.spectrumCanvas) {
@@ -29,10 +30,25 @@ class SpectrometerController {
             return;
         }
         
+        // Load spectral library
+        await this.loadSpectralLibrary();
+        
         this.setupEventListeners();
         this.generateWavelengthGrid();
         this.updateSpectrometerView();
         this.clearSpectrum();
+    }
+    
+    async loadSpectralLibrary() {
+        try {
+            console.log('Loading Jacoby Atlas for spectrometer...');
+            await Utils.loadSpectralLibrary();
+            this.spectralLibraryLoaded = true;
+            console.log('Spectral library loaded successfully');
+        } catch (error) {
+            console.warn('Could not load spectral library, using fallback:', error);
+            this.spectralLibraryLoaded = false;
+        }
     }
     
     setupEventListeners() {
@@ -271,7 +287,8 @@ class SpectrometerController {
         console.log('Integration stopped');
     }
     
-    generateSpectrum() {
+    // ENHANCED: Generate spectrum using Jacoby Atlas
+    async generateSpectrum() {
         if (!this.currentObject) {
             console.error('Cannot generate spectrum: no current object');
             return;
@@ -290,9 +307,11 @@ class SpectrometerController {
             console.log('Generating galaxy spectrum with redshift:', obj.redshift);
             relativeFlux = Utils.generateGalaxySpectrum(obj.redshift, this.wavelengths);
         } else {
-            // Stellar spectrum
+            // Stellar spectrum - NOW USING JACOBY ATLAS
             console.log('Generating stellar spectrum for spectral type:', obj.specType);
-            relativeFlux = Utils.generateStellarSpectrum(obj.specType, this.wavelengths);
+            console.log('Spectral library loaded:', this.spectralLibraryLoaded);
+            
+            relativeFlux = await Utils.generateStellarSpectrum(obj.specType, this.wavelengths);
         }
         
         // Calculate photon arrival rates
@@ -313,6 +332,11 @@ class SpectrometerController {
         });
         
         console.log(`Generated spectrum rates: min=${Math.min(...this.rates).toFixed(3)}, max=${Math.max(...this.rates).toFixed(3)}`);
+        
+        // Log spectral information
+        if (this.spectralLibraryLoaded && obj.objType === 0) {
+            console.log(`✨ Using high-quality Jacoby Atlas spectrum for ${obj.specType}`);
+        }
     }
     
     updateIntegration() {
@@ -376,10 +400,11 @@ class SpectrometerController {
         ctx.fillText('Photon Counts', 0, 0);
         ctx.restore();
         
-        // Title
+        // Title with spectral library indicator
         if (this.currentObject) {
             const objType = this.currentObject.objType === 0 ? 'star' : 'galaxy';
-            const title = `${this.currentObject.name} (${objType}) V = ${this.currentObject.mag.toFixed(2)}`;
+            const libraryIndicator = this.spectralLibraryLoaded && this.currentObject.objType === 0 ? ' ✨' : '';
+            const title = `${this.currentObject.name} (${objType}) V = ${this.currentObject.mag.toFixed(2)}${libraryIndicator}`;
             ctx.textAlign = 'center';
             ctx.font = 'bold 14px Arial';
             ctx.fillText(title, width / 2, 20);
