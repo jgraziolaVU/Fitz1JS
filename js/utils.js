@@ -1,6 +1,70 @@
 // Utility functions for astronomical calculations and conversions
 
 const Utils = {
+    // Store the loaded spectral library
+    spectralLibrary: null,
+    
+    // Load the Jacoby Atlas spectral library
+    loadSpectralLibrary: async function() {
+        if (this.spectralLibrary) return this.spectralLibrary;
+        
+        try {
+            console.log('Loading Jacoby Atlas spectral library...');
+            const response = await fetch('data/jacoby_atlas.json');
+            if (!response.ok) {
+                throw new Error(`Failed to load spectral library: ${response.status}`);
+            }
+            this.spectralLibrary = await response.json();
+            console.log(`Loaded ${this.spectralLibrary.spectra.length} stellar spectra`);
+            return this.spectralLibrary;
+        } catch (error) {
+            console.error('Error loading spectral library:', error);
+            return null;
+        }
+    },
+    
+    // Find spectral data by spectral type
+    findSpectralData: function(spectralType) {
+        if (!this.spectralLibrary) return null;
+        
+        const index = this.spectralLibrary.spec_types.findIndex(type => 
+            type.toLowerCase() === spectralType.toLowerCase()
+        );
+        
+        if (index === -1) {
+            // Try to find a close match
+            const baseType = spectralType.charAt(0); // O, B, A, F, G, K, M
+            const closestIndex = this.spectralLibrary.spec_types.findIndex(type => 
+                type.charAt(0) === baseType
+            );
+            return closestIndex !== -1 ? {
+                wavelength: this.spectralLibrary.wavelength,
+                spectrum: this.spectralLibrary.spectra[closestIndex],
+                actualType: this.spectralLibrary.spec_types[closestIndex]
+            } : null;
+        }
+        
+        return {
+            wavelength: this.spectralLibrary.wavelength,
+            spectrum: this.spectralLibrary.spectra[index],
+            actualType: this.spectralLibrary.spec_types[index]
+        };
+    },
+    
+    // Find spectral data by spectral code
+    findSpectralDataByCode: function(spectralCode) {
+        if (!this.spectralLibrary) return null;
+        
+        const index = this.spectralLibrary.spec_codes.findIndex(code => code === spectralCode);
+        if (index === -1) return null;
+        
+        return {
+            wavelength: this.spectralLibrary.wavelength,
+            spectrum: this.spectralLibrary.spectra[index],
+            actualType: this.spectralLibrary.spec_types[index]
+        };
+    },
+    
     // Angular conversions
     degreesToRadians: (degrees) => degrees * Math.PI / 180,
     radiansToDegrees: (radians) => radians * 180 / Math.PI,
@@ -125,22 +189,21 @@ const Utils = {
     },
     
     poissonRandom: (lambda) => {
-    // Generate Poisson random number using Knuth's algorithm
-    if (lambda < 30) {
-        const L = Math.exp(-lambda);
-        let k = 0;
-        let p = 1;
-        do {
-            k++;
-            p *= Math.random();
-        } while (p > L);
-        return k - 1;
-    } else {
-        // Use normal approximation for large lambda
-        // FIXED: Changed this.normalRandom() to Utils.normalRandom()
-        return Math.max(0, Math.round(lambda + Math.sqrt(lambda) * Utils.normalRandom()));
-    }
-},
+        // Generate Poisson random number using Knuth's algorithm
+        if (lambda < 30) {
+            const L = Math.exp(-lambda);
+            let k = 0;
+            let p = 1;
+            do {
+                k++;
+                p *= Math.random();
+            } while (p > L);
+            return k - 1;
+        } else {
+            // Use normal approximation for large lambda
+            return Math.max(0, Math.round(lambda + Math.sqrt(lambda) * Utils.normalRandom()));
+        }
+    },
     
     normalRandom: () => {
         // Box-Muller transformation
@@ -161,16 +224,73 @@ const Utils = {
         return (2 * h * c * c) / (Math.pow(wavelengthMeters, 5) * (exponential - 1));
     },
     
-    // Generate stellar spectrum
-    generateStellarSpectrum: (spectralType, wavelengths) => {
-        // Simplified stellar spectrum generation
-        // In a real implementation, this would use the Jacoby atlas
-        const baseTemp = Utils.getTemperatureFromSpectralType(spectralType);
-        const spectrum = wavelengths.map(w => Utils.blackbody(w, baseTemp));
+    // Generate stellar spectrum - ENHANCED with Jacoby Atlas
+    generateStellarSpectrum: async function(spectralType, wavelengths) {
+        // Try to load spectral library if not already loaded
+        if (!this.spectralLibrary) {
+            await this.loadSpectralLibrary();
+        }
+        
+        // If we have the spectral library, use it
+        if (this.spectralLibrary) {
+            const spectralData = this.findSpectralData(spectralType);
+            if (spectralData) {
+                console.log(`Using Jacoby Atlas spectrum for ${spectralType} (actual: ${spectralData.actualType})`);
+                
+                // Interpolate the atlas spectrum to match requested wavelengths
+                const interpolatedSpectrum = this.interpolateSpectrum(
+                    spectralData.wavelength, 
+                    spectralData.spectrum, 
+                    wavelengths
+                );
+                
+                // Normalize
+                const maxFlux = Math.max(...interpolatedSpectrum);
+                return interpolatedSpectrum.map(f => f / maxFlux);
+            }
+        }
+        
+        // Fallback to blackbody if spectral library not available
+        console.log(`Falling back to blackbody spectrum for ${spectralType}`);
+        const baseTemp = this.getTemperatureFromSpectralType(spectralType);
+        const spectrum = wavelengths.map(w => this.blackbody(w, baseTemp));
         
         // Normalize
         const maxFlux = Math.max(...spectrum);
         return spectrum.map(f => f / maxFlux);
+    },
+    
+    // Interpolate spectrum to different wavelength grid
+    interpolateSpectrum: function(sourceWavelengths, sourceSpectrum, targetWavelengths) {
+        const interpolated = [];
+        
+        for (let targetWave of targetWavelengths) {
+            // Find surrounding points
+            let i = 0;
+            while (i < sourceWavelengths.length - 1 && sourceWavelengths[i] < targetWave) {
+                i++;
+            }
+            
+            if (i === 0) {
+                // Before first point
+                interpolated.push(sourceSpectrum[0]);
+            } else if (i >= sourceWavelengths.length) {
+                // After last point
+                interpolated.push(sourceSpectrum[sourceSpectrum.length - 1]);
+            } else {
+                // Linear interpolation
+                const w1 = sourceWavelengths[i - 1];
+                const w2 = sourceWavelengths[i];
+                const f1 = sourceSpectrum[i - 1];
+                const f2 = sourceSpectrum[i];
+                
+                const fraction = (targetWave - w1) / (w2 - w1);
+                const interpolatedFlux = f1 + fraction * (f2 - f1);
+                interpolated.push(interpolatedFlux);
+            }
+        }
+        
+        return interpolated;
     },
     
     getTemperatureFromSpectralType: (spectralType) => {
